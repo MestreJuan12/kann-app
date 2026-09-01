@@ -201,7 +201,7 @@ export default function App() {
       madera_lista: formData.maderaLista,
       base_id: formData.baseId || null,
       precio_lista: Number(formData.precioLista || 0),
-      cobroAdicional: Number(formData.cobroAdicional || 0),
+      cobro_adicional: Number(formData.cobroAdicional || 0),
       envio_cobrado: Number(formData.envioCobrado || 0),
       senia: Number(formData.senia || 0),
       forma_pago: formData.formaPago,
