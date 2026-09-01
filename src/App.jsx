@@ -6,126 +6,85 @@ import {
   Plus, 
   X, 
   Edit3, 
-  Trash2,
+  Trash2, 
   MessageCircle, 
   MapPin, 
   Settings, 
   SlidersHorizontal,
   ArrowUpDown,
-  FileText,
   Clock,
   AlertTriangle,
-  Download
+  Download,
+  RefreshCw
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { supabase } from './supabaseClient';
 
 const IMAGEN_DEFAULT = 'https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?auto=format&fit=crop&w=400&q=80';
 
 export default function App() {
-  const [tab, setTab] = useState('activos'); // 'activos' | 'finalizados' | 'stock' | 'ajustes'
+  const [tab, setTab] = useState('activos');
   const [selectedPedido, setSelectedPedido] = useState(null);
   const [showModalForm, setShowModalForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Filtros
   const [filtroMadera, setFiltroMadera] = useState('TODAS');
-  const [ordenFecha, setOrdenFecha] = useState('entrega'); // 'entrega' | 'desc' | 'asc'
+  const [ordenFecha, setOrdenFecha] = useState('entrega');
 
-  // Maderas
-  const [maderas, setMaderas] = useState(() => {
-    const saved = localStorage.getItem('kann_maderas');
-    if (saved) return JSON.parse(saved);
-    return [
-      'Guayubira 40mm',
-      'Petiribi 40mm',
-      'Laurel 40mm',
-      'Eucalipto 40mm',
-      'Eucalipto 30mm'
-    ];
-  });
+  const [maderas, setMaderas] = useState([]);
   const [nuevaMadera, setNuevaMadera] = useState('');
-
-  // Stock Bases
-  const [stockPatas, setStockPatas] = useState(() => {
-    const saved = localStorage.getItem('kann_stock_patas');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 'b1', nombre: 'BASE X 70X70 CHICA', cantidad: 6 },
-      { id: 'b2', nombre: 'BASE X 70X70 MEDIANA', cantidad: 4 },
-      { id: 'b3', nombre: 'BASE X 70X70 GRANDE', cantidad: 3 },
-      { id: 'b4', nombre: 'BASE X 100X100 CHICA', cantidad: 5 },
-      { id: 'b5', nombre: 'BASE X 100X100 GRANDE', cantidad: 2 },
-    ];
-  });
+  const [stockPatas, setStockPatas] = useState([]);
   const [nuevaPataNombre, setNuevaPataNombre] = useState('');
+  const [pedidos, setPedidos] = useState([]);
 
-  // Pedidos
-  const [pedidos, setPedidos] = useState(() => {
-    const saved = localStorage.getItem('kann_pedidos');
-    if (saved) return JSON.parse(saved);
-    return [
-      {
-        id: '1',
-        fechaVenta: '2026-03-01',
-        fechaEntregaPactada: '2026-03-18',
-        cliente: 'Verónica',
-        telefono: '5491144558899',
-        canal: 'Instagram',
-        producto: 'Mesa Comedor',
-        medidas: '2.5 x 1.10 m',
-        madera: 'Guayubira 40mm',
-        foto: IMAGEN_DEFAULT,
-        maderaLista: true,
-        baseId: 'b3',
-        precioLista: 480000,
-        cobroAdicional: 30000,
-        envioCobrado: 15000,
-        senia: 250000,
-        formaPago: 'Transferencia',
-        tipoEntrega: 'Flete',
-        localidadEnvio: 'Avellaneda',
-        domicilioEnvio: 'Av. Mitre 1250 4to B',
-        entregado: false,
-      },
-      {
-        id: '2',
-        fechaVenta: '2026-03-02',
-        fechaEntregaPactada: '2026-03-12',
-        cliente: 'Damián',
-        telefono: '5491133221100',
-        canal: 'WhatsApp',
-        producto: 'Mesa Ratona',
-        medidas: '1.8 x 1.10 m',
-        madera: 'Petiribi 40mm',
-        foto: 'https://images.unsplash.com/photo-1577140917170-285929fb55b7?auto=format&fit=crop&w=400&q=80',
-        maderaLista: false,
-        baseId: 'b1',
-        precioLista: 320000,
-        cobroAdicional: 0,
-        envioCobrado: 0,
-        senia: 160000,
-        formaPago: 'Efectivo',
-        tipoEntrega: 'Retira en taller',
-        localidadEnvio: 'Taller KANN',
-        domicilioEnvio: '',
-        entregado: false,
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [maderasRes, stockRes, pedidosRes] = await Promise.all([
+        supabase.from('maderas').select('*').order('nombre'),
+        supabase.from('stock_patas').select('*').order('nombre'),
+        supabase.from('pedidos').select('*').order('created_at', { ascending: false })
+      ]);
+
+      if (maderasRes.data) setMaderas(maderasRes.data.map(m => m.nombre));
+      if (stockRes.data) setStockPatas(stockRes.data);
+      if (pedidosRes.data) {
+        setPedidos(pedidosRes.data.map(p => ({
+          id: p.id,
+          fechaVenta: p.fecha_venta,
+          fechaEntregaPactada: p.fecha_entrega_pactada,
+          cliente: p.cliente,
+          telefono: p.telefono,
+          canal: p.canal,
+          producto: p.producto,
+          medidas: p.medidas,
+          madera: p.madera,
+          foto: p.foto || IMAGEN_DEFAULT,
+          maderaLista: p.madera_lista,
+          baseId: p.base_id,
+          precioLista: Number(p.precio_lista || 0),
+          cobroAdicional: Number(p.cobro_adicional || 0),
+          envioCobrado: Number(p.envio_cobrado || 0),
+          senia: Number(p.senia || 0),
+          formaPago: p.forma_pago,
+          tipoEntrega: p.tipo_entrega,
+          localidadEnvio: p.localidad_envio,
+          domicilioEnvio: p.domicilio_envio,
+          entregado: p.entregado
+        })));
       }
-    ];
-  });
-
-  // Persistencia
-  useEffect(() => {
-    localStorage.setItem('kann_pedidos', JSON.stringify(pedidos));
-  }, [pedidos]);
-
-  useEffect(() => {
-    localStorage.setItem('kann_stock_patas', JSON.stringify(stockPatas));
-  }, [stockPatas]);
+    } catch (err) {
+      console.error('Error cargando datos de Supabase:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem('kann_maderas', JSON.stringify(maderas));
-  }, [maderas]);
+    fetchData();
+  }, []);
 
   const initialFormState = {
     fechaVenta: new Date().toISOString().split('T')[0],
@@ -152,7 +111,6 @@ export default function App() {
 
   const [formData, setFormData] = useState(initialFormState);
 
-// Cálculo exacto de días restantes
   const calcularDiasRestantes = (fechaEntrega) => {
     if (!fechaEntrega) return null;
     const [y, m, d] = fechaEntrega.split('-').map(Number);
@@ -162,6 +120,7 @@ export default function App() {
     const diffTime = entrega.getTime() - hoy.getTime();
     return Math.round(diffTime / (1000 * 60 * 60 * 24));
   };
+
   const getBadgeDias = (dias) => {
     if (dias === null || dias === undefined) return null;
     if (dias < 0) {
@@ -192,46 +151,80 @@ export default function App() {
     );
   };
 
-  const toggleEntregado = (id) => {
-    setPedidos(pedidos.map(p => p.id === id ? { ...p, entregado: !p.entregado } : p));
+  const toggleEntregado = async (id, currentStatus) => {
+    const newStatus = !currentStatus;
+    setPedidos(pedidos.map(p => p.id === id ? { ...p, entregado: newStatus } : p));
+    await supabase.from('pedidos').update({ entregado: newStatus }).eq('id', id);
   };
 
-  // Guardar Pedido con Descuento Automático de Stock
-  const handleSavePedido = (e) => {
+  const handleStockChange = async (id, delta) => {
+    const item = stockPatas.find(p => p.id === id);
+    if (!item) return;
+    const nuevaCant = Math.max(0, item.cantidad + delta);
+    setStockPatas(stockPatas.map(p => p.id === id ? { ...p, cantidad: nuevaCant } : p));
+    await supabase.from('stock_patas').update({ cantidad: nuevaCant }).eq('id', id);
+  };
+
+  const handleSavePedido = async (e) => {
     e.preventDefault();
+    const payload = {
+      fecha_venta: formData.fechaVenta || new Date().toISOString().split('T')[0],
+      fecha_entrega_pactada: formData.fechaEntregaPactada || null,
+      cliente: formData.cliente,
+      telefono: formData.telefono,
+      canal: formData.canal,
+      producto: formData.producto,
+      medidas: formData.medidas,
+      madera: formData.madera,
+      foto: formData.foto,
+      madera_lista: formData.maderaLista,
+      base_id: formData.baseId || null,
+      precio_lista: Number(formData.precioLista || 0),
+      cobro_adicional: Number(formData.cobroAdicional || 0),
+      envio_cobrado: Number(formData.envioCobrado || 0),
+      senia: Number(formData.senia || 0),
+      forma_pago: formData.formaPago,
+      tipo_entrega: formData.tipoEntrega,
+      localidad_envio: formData.localidadEnvio,
+      domicilio_envio: formData.domicilioEnvio,
+      entregado: formData.entregado || false,
+    };
+
     if (editingId) {
       const pedidoAnterior = pedidos.find(p => p.id === editingId);
-      // Si cambió de base, devolver 1 a la anterior y restar 1 a la nueva
       if (pedidoAnterior && pedidoAnterior.baseId !== formData.baseId) {
-        setStockPatas(stockPatas.map(p => {
-          if (p.id === pedidoAnterior.baseId) return { ...p, cantidad: p.cantidad + 1 };
-          if (p.id === formData.baseId) return { ...p, cantidad: Math.max(0, p.cantidad - 1) };
-          return p;
-        }));
+        if (pedidoAnterior.baseId) {
+          const pataAnt = stockPatas.find(p => p.id === pedidoAnterior.baseId);
+          if (pataAnt) await handleStockChange(pataAnt.id, 1);
+        }
+        if (formData.baseId) {
+          const pataNueva = stockPatas.find(p => p.id === formData.baseId);
+          if (pataNueva) await handleStockChange(pataNueva.id, -1);
+        }
       }
-      setPedidos(pedidos.map(p => p.id === editingId ? { ...formData, id: editingId } : p));
+      await supabase.from('pedidos').update(payload).eq('id', editingId);
     } else {
-      // Nuevo pedido: descontar stock
+      const newId = Date.now().toString();
       if (formData.baseId) {
-        setStockPatas(stockPatas.map(p => p.id === formData.baseId ? { ...p, cantidad: Math.max(0, p.cantidad - 1) } : p));
+        const pata = stockPatas.find(p => p.id === formData.baseId);
+        if (pata) await handleStockChange(pata.id, -1);
       }
-      const newPedido = {
-        ...formData,
-        id: Date.now().toString(),
-      };
-      setPedidos([...pedidos, newPedido]);
+      await supabase.from('pedidos').insert([{ ...payload, id: newId }]);
     }
+
     setShowModalForm(false);
+    fetchData();
   };
 
-  const handleDeletePedido = (id) => {
+  const handleDeletePedido = async (id) => {
     const pedidoABorrar = pedidos.find(p => p.id === id);
     if (pedidoABorrar && pedidoABorrar.baseId) {
-      // Reponer stock
-      setStockPatas(stockPatas.map(p => p.id === pedidoABorrar.baseId ? { ...p, cantidad: p.cantidad + 1 } : p));
+      const pata = stockPatas.find(p => p.id === pedidoABorrar.baseId);
+      if (pata) await handleStockChange(pata.id, 1);
     }
     setPedidos(pedidos.filter(p => p.id !== id));
     setSelectedPedido(null);
+    await supabase.from('pedidos').delete().eq('id', id);
   };
 
   const handleOpenCreate = () => {
@@ -247,30 +240,33 @@ export default function App() {
     setShowModalForm(true);
   };
 
-  const handleStockChange = (id, delta) => {
-    setStockPatas(stockPatas.map(p => p.id === id ? { ...p, cantidad: Math.max(0, p.cantidad + delta) } : p));
-  };
-
-  const handleAddPata = (e) => {
+  const handleAddPata = async (e) => {
     e.preventDefault();
     if (!nuevaPataNombre.trim()) return;
-    setStockPatas([...stockPatas, { id: 'b_' + Date.now(), nombre: nuevaPataNombre.toUpperCase(), cantidad: 0 }]);
+    const newId = 'b_' + Date.now();
+    const nombre = nuevaPataNombre.toUpperCase().trim();
+    setStockPatas([...stockPatas, { id: newId, nombre, cantidad: 0 }]);
     setNuevaPataNombre('');
+    await supabase.from('stock_patas').insert([{ id: newId, nombre, cantidad: 0 }]);
   };
 
-  const handleDeletePata = (id) => {
+  const handleDeletePata = async (id) => {
     setStockPatas(stockPatas.filter(p => p.id !== id));
+    await supabase.from('stock_patas').delete().eq('id', id);
   };
 
-  const handleAddMadera = (e) => {
+  const handleAddMadera = async (e) => {
     e.preventDefault();
     if (!nuevaMadera.trim()) return;
-    setMaderas([...maderas, nuevaMadera.trim()]);
+    const nombre = nuevaMadera.trim();
+    setMaderas([...maderas, nombre]);
     setNuevaMadera('');
+    await supabase.from('maderas').insert([{ nombre }]);
   };
 
-  const handleDeleteMadera = (madera) => {
+  const handleDeleteMadera = async (madera) => {
     setMaderas(maderas.filter(m => m !== madera));
+    await supabase.from('maderas').delete().eq('nombre', madera);
   };
 
   const handleImageUpload = (e) => {
@@ -287,18 +283,17 @@ export default function App() {
     return base ? base.nombre : 'Sin base';
   };
 
-const generarPDF = (pedido) => {
+  const generarPDF = (pedido) => {
     try {
       const doc = new jsPDF();
       const total = Number(pedido.precioLista || 0) + Number(pedido.cobroAdicional || 0) + Number(pedido.envioCobrado || 0);
       const senia = Number(pedido.senia || 0);
       const resta = total - senia;
 
-      // Encabezado KANN
       doc.setFillColor(18, 18, 18);
       doc.rect(0, 0, 210, 38, 'F');
       
-      doc.setTextColor(217, 119, 6); // Ámbar KANN
+      doc.setTextColor(217, 119, 6);
       doc.setFontSize(22);
       doc.setFont('helvetica', 'bold');
       doc.text('KANN', 15, 20);
@@ -313,7 +308,6 @@ const generarPDF = (pedido) => {
       doc.text(`ORDEN #${(pedido.id || '0000').slice(-5)}`, 140, 20);
       doc.text(`Fecha: ${pedido.fechaVenta || 'S/D'}`, 140, 28);
 
-      // Datos Cliente
       doc.setTextColor(30, 30, 30);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
@@ -328,7 +322,6 @@ const generarPDF = (pedido) => {
         doc.text(`Fecha pactada de entrega: ${pedido.fechaEntregaPactada}`, 15, 74);
       }
 
-      // Tabla de ítems con autoTable explícito
       autoTable(doc, {
         startY: pedido.fechaEntregaPactada ? 80 : 76,
         head: [['Concepto / Item', 'Detalle', 'Subtotal']],
@@ -346,7 +339,6 @@ const generarPDF = (pedido) => {
         styles: { fontSize: 8.5 }
       });
 
-      // Totales
       const finalY = doc.lastAutoTable.finalY + 8;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
@@ -359,17 +351,14 @@ const generarPDF = (pedido) => {
       doc.setTextColor(16, 185, 129);
       doc.text(`SALDO AL RECIBIR: $${resta.toLocaleString('es-AR')}`, 125, finalY + 12);
 
-      // Pie de página
       doc.setTextColor(130, 130, 130);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.text('KANN - Herreria y Carpinteria a medida.', 15, 280);
 
-      const nombreArchivo = `Comprobante_KANN_${(pedido.cliente || 'Pedido').replace(/\s+/g, '_')}.pdf`;
-      doc.save(nombreArchivo);
+      doc.save(`Comprobante_KANN_${(pedido.cliente || 'Pedido').replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
       console.error('Error al generar PDF:', err);
-      alert('Hubo un problema al generar el PDF. Revisa la consola.');
     }
   };
 
@@ -399,7 +388,6 @@ const generarPDF = (pedido) => {
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(texto)}`, '_blank');
   };
 
-  // Filtrado y Orden
   const pedidosFiltrados = useMemo(() => {
     return pedidos
       .filter(p => tab === 'activos' ? !p.entregado : p.entregado)
@@ -416,7 +404,6 @@ const generarPDF = (pedido) => {
       });
   }, [pedidos, tab, filtroMadera, ordenFecha]);
 
-  // Métricas
   const metricas = useMemo(() => {
     const act = pedidos.filter(p => !p.entregado);
     const fin = pedidos.filter(p => p.entregado);
@@ -438,12 +425,15 @@ const generarPDF = (pedido) => {
   return (
     <div className="max-w-md mx-auto min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans border-x border-neutral-900 shadow-2xl pb-12">
       
-      {/* Header Limpio con Logo URL */}
       <header className="bg-neutral-900/90 backdrop-blur-md border-b border-neutral-800 py-3 px-4 sticky top-0 z-20 flex justify-between items-center">
         <div className="flex items-center gap-2.5">
           <img 
-            src="https://scontent.cdninstagram.com/v/t51.82787-19/639763366_17847550287689100_5017075638561734158_n.jpg?stp=dst-jpg_s150x150_tt6&_nc_cat=104&ccb=7-5&_nc_sid=f7ccc5&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4zMjAuQzMifQ%3D%3D&_nc_ohc=Wc1XeFun2WEQ7kNvwHXL4IS&_nc_oc=AdovyCxKIDobCmeBJkm2AYNRkRMei_MLUa_jjgubjQYw1L-Jg8FXPWsWbZHkNtjujXusf0AtgnaGvZO3BAJNiDak&_nc_zt=24&_nc_ht=scontent.cdninstagram.com&_nc_gid=-PLlj5Bj4MFfAxGqUkd7uw&_nc_ss=7b689&oh=00_AQKcAVbvohzIqlrnsVEH6NE1I7_UTUEujua0IUYTiXwMig&oe=6A9CA076" 
+            src="/logo.png" 
             alt="KANN" 
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = 'https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?auto=format&fit=crop&w=100&q=80';
+            }}
             className="w-9 h-9 rounded-xl object-cover border border-neutral-700 shadow" 
           />
           <h1 className="text-lg font-black tracking-widest uppercase text-stone-100 leading-none">
@@ -452,6 +442,12 @@ const generarPDF = (pedido) => {
         </div>
 
         <div className="flex items-center gap-1.5">
+          <button 
+            onClick={fetchData}
+            title="Sincronizar"
+            className="p-2 rounded-xl border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-amber-400 transition">
+            <RefreshCw size={17} className={loading ? 'animate-spin text-amber-500' : ''} />
+          </button>
           <button 
             onClick={() => setTab('ajustes')} 
             className={`p-2 rounded-xl border transition ${tab === 'ajustes' ? 'bg-amber-600 border-amber-500 text-stone-950' : 'bg-neutral-900 border-neutral-800 text-neutral-400'}`}>
@@ -466,7 +462,6 @@ const generarPDF = (pedido) => {
         </div>
       </header>
 
-      {/* Métricas */}
       <div className="p-3 bg-neutral-900/50 border-b border-neutral-800/80 grid grid-cols-2 gap-2 text-xs">
         <div className="bg-neutral-900 p-2.5 rounded-xl border border-neutral-800">
           <span className="text-[10px] text-neutral-400 uppercase font-bold block">
@@ -486,7 +481,6 @@ const generarPDF = (pedido) => {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="p-3 pb-2">
         <nav className="grid grid-cols-3 bg-neutral-900/80 p-1 rounded-2xl border border-neutral-800 text-[11px] font-bold">
           <button 
@@ -507,7 +501,6 @@ const generarPDF = (pedido) => {
         </nav>
       </div>
 
-      {/* Filtros */}
       {(tab === 'activos' || tab === 'finalizados') && (
         <div className="px-3 pb-2 flex items-center gap-2">
           <div className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5">
@@ -534,12 +527,11 @@ const generarPDF = (pedido) => {
         </div>
       )}
 
-      {/* Lista Principal */}
       <main className="p-3 flex-1 space-y-3 overflow-y-auto">
         {tab === 'activos' || tab === 'finalizados' ? (
           pedidosFiltrados.length === 0 ? (
             <div className="text-center py-16 text-neutral-500 text-xs">
-              No se encontraron pedidos.
+              {loading ? 'Cargando pedidos...' : 'No se encontraron pedidos.'}
             </div>
           ) : (
             pedidosFiltrados.map((pedido) => {
@@ -552,14 +544,12 @@ const generarPDF = (pedido) => {
                   key={pedido.id} 
                   className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-3.5 shadow-md relative overflow-hidden flex gap-3.5 items-center">
                   
-                  {/* Foto */}
                   <img 
                     src={pedido.foto || IMAGEN_DEFAULT} 
                     alt={pedido.producto} 
                     className="w-20 h-20 rounded-xl object-cover border border-neutral-800 flex-shrink-0 bg-neutral-950" 
                   />
 
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-xs font-black uppercase tracking-wide text-amber-500 truncate">
@@ -593,7 +583,6 @@ const generarPDF = (pedido) => {
                     </div>
                   </div>
 
-                  {/* Acciones */}
                   <div className="flex flex-col items-center justify-between gap-3 self-stretch py-0.5">
                     <div className="flex flex-col gap-1 items-center">
                       <button 
@@ -609,7 +598,7 @@ const generarPDF = (pedido) => {
                     </div>
 
                     <button 
-                      onClick={() => toggleEntregado(pedido.id)} 
+                      onClick={() => toggleEntregado(pedido.id, pedido.entregado)} 
                       className="transition-transform active:scale-90">
                       {pedido.entregado ? (
                         <CheckCircle2 size={24} className="fill-emerald-500 text-neutral-950" />
@@ -623,7 +612,6 @@ const generarPDF = (pedido) => {
             })
           )
         ) : tab === 'stock' ? (
-          /* Stock Bases */
           <div className="space-y-2.5">
             {stockPatas.map(pata => (
               <div key={pata.id} className="bg-neutral-900 border border-neutral-800 p-4 rounded-2xl flex justify-between items-center shadow">
@@ -653,9 +641,7 @@ const generarPDF = (pedido) => {
             ))}
           </div>
         ) : (
-          /* Panel Ajustes */
           <div className="space-y-5">
-            {/* Maderas */}
             <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-2xl space-y-3">
               <h3 className="font-black text-xs text-amber-500 uppercase tracking-wider">Maderas Disponibles</h3>
               <form onSubmit={handleAddMadera} className="flex gap-2">
@@ -683,7 +669,6 @@ const generarPDF = (pedido) => {
               </div>
             </div>
 
-            {/* Bases */}
             <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-2xl space-y-3">
               <h3 className="font-black text-xs text-amber-500 uppercase tracking-wider">Tipos de Bases de Hierro</h3>
               <form onSubmit={handleAddPata} className="flex gap-2">
@@ -714,7 +699,6 @@ const generarPDF = (pedido) => {
         )}
       </main>
 
-      {/* Modal: Detalle Completo (...) */}
       {selectedPedido && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-neutral-900 border-t sm:border border-neutral-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
@@ -757,7 +741,6 @@ const generarPDF = (pedido) => {
               )}
             </div>
 
-            {/* Finanzas */}
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800">
                 <span className="text-neutral-500 block text-[10px] uppercase font-bold">Precio Total</span>
@@ -773,7 +756,6 @@ const generarPDF = (pedido) => {
               </div>
             </div>
 
-            {/* Acciones & Comprobante */}
             <div className="space-y-2 pt-1">
               <div className="grid grid-cols-2 gap-2">
                 <button 
@@ -805,7 +787,6 @@ const generarPDF = (pedido) => {
         </div>
       )}
 
-      {/* Modal: Formulario Crear / Modificar */}
       {showModalForm && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <form onSubmit={handleSavePedido} className="bg-neutral-900 border-t sm:border border-neutral-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 max-h-[92vh] overflow-y-auto">
@@ -817,7 +798,6 @@ const generarPDF = (pedido) => {
             </div>
 
             <div className="space-y-3 text-xs">
-              {/* Fechas */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="font-bold text-neutral-400 block mb-1">Fecha de Venta</label>
@@ -840,7 +820,6 @@ const generarPDF = (pedido) => {
                 </div>
               </div>
 
-              {/* Cliente y Teléfono */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="font-bold text-neutral-400 block mb-1">Cliente</label>
@@ -865,7 +844,6 @@ const generarPDF = (pedido) => {
                 </div>
               </div>
 
-              {/* Producto y Medidas */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="font-bold text-neutral-400 block mb-1">Producto</label>
@@ -890,7 +868,6 @@ const generarPDF = (pedido) => {
                 </div>
               </div>
 
-              {/* Maderas y Bases (Descuenta 1 del stock) */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="font-bold text-amber-500 block mb-1">Madera</label>
@@ -918,7 +895,6 @@ const generarPDF = (pedido) => {
                 </div>
               </div>
 
-              {/* Destino y Domicilio */}
               <div className="grid grid-cols-2 gap-2 border-t border-neutral-800 pt-2">
                 <div>
                   <label className="font-bold text-neutral-400 block mb-1">Localidad / Zona</label>
@@ -942,7 +918,6 @@ const generarPDF = (pedido) => {
                 </div>
               </div>
 
-              {/* Precios */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="font-bold text-neutral-400 block mb-1">Precio Lista ($)</label>
@@ -989,7 +964,6 @@ const generarPDF = (pedido) => {
                 </div>
               </div>
 
-              {/* Check Madera Lista y Foto */}
               <div className="grid grid-cols-2 gap-2 pt-1 items-center">
                 <label className="flex items-center gap-2 bg-neutral-950 border border-neutral-800 p-2 rounded-xl cursor-pointer">
                   <input 
