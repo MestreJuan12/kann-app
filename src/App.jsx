@@ -427,15 +427,9 @@ export default function App() {
       
       <header className="bg-neutral-900/90 backdrop-blur-md border-b border-neutral-800 py-3 px-4 sticky top-0 z-20 flex justify-between items-center">
         <div className="flex items-center gap-2.5">
-          <img 
-            src="/logo.png" 
-            alt="KANN" 
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = 'https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?auto=format&fit=crop&w=100&q=80';
-            }}
-            className="w-9 h-9 rounded-xl object-cover border border-neutral-700 shadow" 
-          />
+          <div className="w-8 h-8 rounded-xl bg-neutral-900 border border-neutral-700 flex items-center justify-center font-black text-amber-500 shadow-inner text-sm">
+            K
+          </div>
           <h1 className="text-lg font-black tracking-widest uppercase text-stone-100 leading-none">
             KANN
           </h1>
