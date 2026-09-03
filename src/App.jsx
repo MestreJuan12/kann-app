@@ -126,6 +126,36 @@ export default function App() {
 
   useEffect(() => {
     fetchData();
+
+    // Suscripción Realtime a cambios en Postgres
+    const channel = supabase
+      .channel("taller-realtime-sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pedidos" },
+        () => {
+          fetchData();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "stock_patas" },
+        () => {
+          fetchData();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "maderas" },
+        () => {
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const initialFormState = {
