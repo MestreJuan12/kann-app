@@ -19,11 +19,16 @@ import {
   Sun,
   Moon,
   ZoomIn,
-  Loader2
+  Loader2,
+  PackageCheck
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from './supabaseClient';
+import { Button } from './components/ui/button';
+import { Card } from './components/ui/card';
+import { Badge } from './components/ui/badge';
+import { Input } from './components/ui/input';
 
 const IMAGEN_DEFAULT = 'https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?auto=format&fit=crop&w=400&q=80';
 
@@ -34,13 +39,10 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Modal de confirmación para marcar entregado / reactivar
   const [confirmModal, setConfirmModal] = useState({ show: false, pedido: null });
 
-  // Tema y escala de texto (1x, 2x, 3x, 4x)
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('kann_theme') !== 'light');
-  const [fontSize, setFontSize] = useState(() => localStorage.getItem('kann_font') || '1x');
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('app_theme') !== 'light');
+  const [fontSize, setFontSize] = useState(() => localStorage.getItem('app_font') || '1x');
 
   const [filtroMadera, setFiltroMadera] = useState('TODAS');
   const [ordenFecha, setOrdenFecha] = useState('entrega');
@@ -52,11 +54,18 @@ export default function App() {
   const [pedidos, setPedidos] = useState([]);
 
   useEffect(() => {
-    localStorage.setItem('kann_theme', darkMode ? 'dark' : 'light');
+    const root = document.documentElement;
+    if (darkMode) {
+      root.classList.add('dark');
+      localStorage.setItem('app_theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('app_theme', 'light');
+    }
   }, [darkMode]);
 
   useEffect(() => {
-    localStorage.setItem('kann_font', fontSize);
+    localStorage.setItem('app_font', fontSize);
   }, [fontSize]);
 
   const toggleFontSize = () => {
@@ -150,37 +159,32 @@ export default function App() {
 
   const getBadgeDias = (dias) => {
     if (dias === null || dias === undefined) return null;
-    const badgeTextSize = fontSize === '4x' ? 'text-sm' : fontSize === '3x' ? 'text-xs' : 'text-[10px]';
     if (dias < 0) {
       return (
-        <span className={`bg-rose-950/90 border border-rose-700 text-rose-300 font-bold px-2 py-0.5 rounded flex items-center gap-1 ${badgeTextSize}`}>
-          <AlertTriangle size={12} /> Atrasado ({Math.abs(dias)}d)
-        </span>
+        <Badge variant="destructive" className="gap-1 font-semibold">
+          <AlertTriangle size={11} /> Atrasado ({Math.abs(dias)}d)
+        </Badge>
       );
     }
     if (dias === 0) {
       return (
-        <span className={`bg-amber-500 text-stone-950 font-black px-2 py-0.5 rounded ${badgeTextSize}`}>
-          ¡Entrega Hoy!
-        </span>
+        <Badge variant="default" className="font-bold">
+          Entrega Hoy
+        </Badge>
       );
     }
     if (dias <= 3) {
       return (
-        <span className={`bg-amber-950/90 border border-amber-600 text-amber-300 font-bold px-2 py-0.5 rounded flex items-center gap-1 ${badgeTextSize}`}>
-          <Clock size={12} /> {dias} días rest.
-        </span>
+        <Badge variant="warning" className="gap-1 font-semibold">
+          <Clock size={11} /> {dias}d rest.
+        </Badge>
       );
     }
     return (
-      <span className={`bg-neutral-800 text-neutral-300 border border-neutral-700 font-medium px-2 py-0.5 rounded flex items-center gap-1 ${badgeTextSize}`}>
-        <Clock size={12} /> {dias} días
-      </span>
+      <Badge variant="secondary" className="gap-1 font-medium">
+        <Clock size={11} /> {dias} días
+      </Badge>
     );
-  };
-
-  const handleConfirmToggle = (pedido) => {
-    setConfirmModal({ show: true, pedido });
   };
 
   const executeToggleEntregado = async () => {
@@ -254,7 +258,7 @@ export default function App() {
       setShowModalForm(false);
       await fetchData();
     } catch (err) {
-      console.error('Error al procesar el pedido en KANN:', err);
+      console.error('Error al procesar el pedido:', err);
     } finally {
       setIsSubmitting(false);
     }
@@ -334,28 +338,28 @@ export default function App() {
       const senia = Number(pedido.senia || 0);
       const resta = total - senia;
 
-      doc.setFillColor(18, 18, 18);
+      doc.setFillColor(24, 24, 27);
       doc.rect(0, 0, 210, 38, 'F');
       
-      doc.setTextColor(217, 119, 6);
-      doc.setFontSize(22);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text('KANN', 15, 20);
+      doc.text('ORDEN DE TRABAJO', 15, 22);
       
       doc.setFontSize(9);
-      doc.setTextColor(180, 180, 180);
+      doc.setTextColor(161, 161, 170);
       doc.setFont('helvetica', 'normal');
-      doc.text('MUEBLES & DISENO INDUSTRIAL', 15, 28);
+      doc.text('FABRICACION INDUSTRIAL A MEDIDA', 15, 29);
       
       doc.setFontSize(10);
       doc.setTextColor(255, 255, 255);
-      doc.text(`ORDEN #${(pedido.id || '0000').slice(-5)}`, 140, 20);
+      doc.text(`ID: #${(pedido.id || '0000').slice(-5)}`, 140, 20);
       doc.text(`Fecha: ${pedido.fechaVenta || 'S/D'}`, 140, 28);
 
-      doc.setTextColor(30, 30, 30);
+      doc.setTextColor(24, 24, 27);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.text('DATOS DE LA ORDEN', 15, 48);
+      doc.text('INFORMACION DEL CLIENTE', 15, 48);
 
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
@@ -368,39 +372,30 @@ export default function App() {
 
       autoTable(doc, {
         startY: pedido.fechaEntregaPactada ? 80 : 76,
-        head: [['Concepto / Item', 'Detalle', 'Subtotal']],
+        head: [['Concepto', 'Especificacion', 'Monto']],
         body: [
           ['Producto / Modelo', pedido.producto || '-', ''],
-          ['Medidas', pedido.medidas || '-', ''],
-          ['Tipo de Madera', pedido.madera || '-', ''],
-          ['Base de Hierro', getBaseNombre(pedido.baseId), ''],
-          ['Precio Lista Base', 'Fabricacion estandar', `$${Number(pedido.precioLista || 0).toLocaleString('es-AR')}`],
-          ['Adicional', 'Medidas especiales / Lustre / Extras', `$${Number(pedido.cobroAdicional || 0).toLocaleString('es-AR')}`],
-          ['Costo de Envio / Flete', pedido.localidadEnvio || 'Retira', `$${Number(pedido.envioCobrado || 0).toLocaleString('es-AR')}`],
+          ['Dimensiones', pedido.medidas || '-', ''],
+          ['Madera', pedido.madera || '-', ''],
+          ['Estructura Base', getBaseNombre(pedido.baseId), ''],
+          ['Precio Base', 'Mueble estandar', `$${Number(pedido.precioLista || 0).toLocaleString('es-AR')}`],
+          ['Adicionales', 'Medidas especiales / Lustre / Extras', `$${Number(pedido.cobroAdicional || 0).toLocaleString('es-AR')}`],
+          ['Envio', pedido.localidadEnvio || 'Retira', `$${Number(pedido.envioCobrado || 0).toLocaleString('es-AR')}`],
         ],
         theme: 'grid',
-        headStyles: { fillColor: [18, 18, 18], textColor: [255, 255, 255], fontStyle: 'bold' },
+        headStyles: { fillColor: [24, 24, 27], textColor: [255, 255, 255], fontStyle: 'bold' },
         styles: { fontSize: 8.5 }
       });
 
       const finalY = doc.lastAutoTable.finalY + 8;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 30, 30);
+      doc.setTextColor(24, 24, 27);
       doc.text(`TOTAL GENERAL: $${total.toLocaleString('es-AR')}`, 125, finalY);
-      
-      doc.setTextColor(217, 119, 6);
       doc.text(`SENA ABONADA: $${senia.toLocaleString('es-AR')}`, 125, finalY + 6);
-      
-      doc.setTextColor(16, 185, 129);
-      doc.text(`SALDO AL RECIBIR: $${resta.toLocaleString('es-AR')}`, 125, finalY + 12);
+      doc.text(`SALDO PENDIENTE: $${resta.toLocaleString('es-AR')}`, 125, finalY + 12);
 
-      doc.setTextColor(130, 130, 130);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.text('KANN - Herreria y Carpinteria a medida.', 15, 280);
-
-      doc.save(`Comprobante_KANN_${(pedido.cliente || 'Pedido').replace(/\s+/g, '_')}.pdf`);
+      doc.save(`Orden_${(pedido.cliente || 'Pedido').replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
       console.error('Error al generar PDF:', err);
     }
@@ -416,18 +411,18 @@ export default function App() {
     const resta = total - senia;
     const cleanPhone = pedido.telefono.replace(/\D/g, '');
 
-    const texto = `*KANN | Detalle de tu Pedido*\n\n` +
+    const texto = `*Detalle de tu Pedido*\n\n` +
       `👤 *Cliente:* ${pedido.cliente}\n` +
       `🪑 *Modelo:* ${pedido.producto}\n` +
       `📐 *Medidas:* ${pedido.medidas}\n` +
       `🪵 *Madera:* ${pedido.madera}\n` +
       `🔩 *Base:* ${getBaseNombre(pedido.baseId)}\n` +
-      (pedido.fechaEntregaPactada ? `📅 *Entrega estimada:* ${pedido.fechaEntregaPactada}\n` : '') +
+      (pedido.fechaEntregaPactada ? `📅 *Entrega pactada:* ${pedido.fechaEntregaPactada}\n` : '') +
       `📍 *Destino:* ${pedido.localidadEnvio || 'Taller'} ${pedido.domicilioEnvio ? `(${pedido.domicilioEnvio})` : ''}\n\n` +
       `💰 *Total:* $${total.toLocaleString('es-AR')}\n` +
       `💵 *Seña:* $${senia.toLocaleString('es-AR')}\n` +
       `⚡ *Saldo al entregar:* $${resta.toLocaleString('es-AR')}\n\n` +
-      `¡Muchas gracias por confiar en KANN!`;
+      `¡Muchas gracias!`;
 
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(texto)}`, '_blank');
   };
@@ -467,154 +462,146 @@ export default function App() {
   }, [pedidos]);
 
   const rootScale = 
-    fontSize === '4x' ? 'text-xl leading-loose' :
-    fontSize === '3x' ? 'text-lg leading-relaxed' :
+    fontSize === '4x' ? 'text-xl' :
+    fontSize === '3x' ? 'text-lg' :
     fontSize === '2x' ? 'text-sm' : 'text-xs';
 
-  const titleScale = 
-    fontSize === '4x' ? 'text-2xl font-black' :
-    fontSize === '3x' ? 'text-xl font-black' :
-    fontSize === '2x' ? 'text-base font-bold' : 'text-xs font-bold';
-
-  const priceScale = 
-    fontSize === '4x' ? 'text-2xl font-black' :
-    fontSize === '3x' ? 'text-xl font-black' :
-    fontSize === '2x' ? 'text-base font-black' : 'text-xs font-black';
-
-  const bgMain = darkMode ? 'bg-neutral-950 text-neutral-100 border-neutral-900' : 'bg-stone-100 text-stone-900 border-stone-300';
-  const bgCard = darkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-stone-200 shadow-sm';
-  const bgInput = darkMode ? 'bg-neutral-950 border-neutral-800 text-neutral-100' : 'bg-stone-50 border-stone-300 text-stone-900';
-  const textMuted = darkMode ? 'text-neutral-400' : 'text-stone-500';
-
   return (
-    <div className={`max-w-md mx-auto min-h-screen ${bgMain} flex flex-col font-sans border-x shadow-2xl pb-16 transition-all duration-200 ${rootScale}`}>
+    <div className={`max-w-md mx-auto min-h-screen bg-background text-foreground flex flex-col font-sans border-x border-border shadow-sm pb-16 transition-all duration-200 ${rootScale}`}>
       
-      {/* Header KANN */}
-      <header className={`${darkMode ? 'bg-neutral-900/90 border-neutral-800' : 'bg-white/95 border-stone-200'} backdrop-blur-md border-b py-2.5 px-3 sticky top-0 z-20 flex justify-between items-center transition-colors`}>
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-neutral-900 border border-neutral-700 flex items-center justify-center font-black text-amber-500 shadow-inner text-base">
-            K
+      {/* Header Estilo shadcn */}
+      <header className="border-b border-border bg-background/80 backdrop-blur-md py-3 px-4 sticky top-0 z-20 flex justify-between items-center">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-foreground text-background font-bold flex items-center justify-center text-sm shadow-sm">
+            ✦
           </div>
-          <h1 className="text-base font-black tracking-widest uppercase leading-none">
-            KANN
-          </h1>
+          <span className="text-sm font-semibold tracking-tight uppercase">
+            Taller OS
+          </span>
         </div>
 
-        {/* Botones Cabecera */}
         <div className="flex items-center gap-1.5">
-          <button 
+          <Button 
+            variant="outline" 
+            size="sm"
             onClick={toggleFontSize}
-            title="Aumentar tamaño de letra"
-            className={`px-2.5 py-1.5 rounded-lg border font-black text-xs flex items-center gap-1 transition shadow-sm ${
-              fontSize !== '1x' ? 'bg-amber-500 text-stone-950 border-amber-400 scale-105' : darkMode ? 'bg-neutral-900 border-neutral-800 text-neutral-300' : 'bg-stone-100 border-stone-300 text-stone-700'
-            }`}>
-            <ZoomIn size={15} />
-            <span>{fontSize}</span>
-          </button>
+            title="Escalar fuente"
+            className="h-8 px-2 font-mono text-xs">
+            <ZoomIn size={14} className="mr-1" />
+            {fontSize}
+          </Button>
 
-          <button 
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8"
             onClick={() => setDarkMode(!darkMode)}
-            title="Cambiar tema"
-            className={`p-1.5 rounded-lg border transition ${darkMode ? 'bg-neutral-900 border-neutral-800 text-amber-400' : 'bg-stone-100 border-stone-300 text-stone-800'}`}>
-            {darkMode ? <Sun size={17} /> : <Moon size={17} />}
-          </button>
+            title="Tema">
+            {darkMode ? <Sun size={15} /> : <Moon size={15} />}
+          </Button>
 
-          <button 
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8"
             onClick={fetchData}
-            title="Sincronizar"
-            className={`p-1.5 rounded-lg border transition ${darkMode ? 'bg-neutral-900 border-neutral-800 text-neutral-400' : 'bg-stone-100 border-stone-300 text-stone-600'}`}>
-            <RefreshCw size={17} className={loading ? 'animate-spin text-amber-500' : ''} />
-          </button>
+            title="Sincronizar">
+            <RefreshCw size={15} className={loading ? 'animate-spin text-muted-foreground' : ''} />
+          </Button>
 
-          <button 
-            onClick={() => setTab('ajustes')} 
-            className={`p-1.5 rounded-lg border transition ${tab === 'ajustes' ? 'bg-amber-600 border-amber-500 text-stone-950' : darkMode ? 'bg-neutral-900 border-neutral-800 text-neutral-400' : 'bg-stone-100 border-stone-300 text-stone-600'}`}>
-            <Settings size={17} />
-          </button>
+          <Button 
+            variant={tab === 'ajustes' ? 'secondary' : 'ghost'} 
+            size="icon" 
+            className="h-8 w-8"
+            onClick={() => setTab('ajustes')}>
+            <Settings size={15} />
+          </Button>
 
-          <button 
-            onClick={handleOpenCreate} 
-            className="bg-amber-600 hover:bg-amber-500 text-stone-950 px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1 shadow transition">
-            <Plus size={16} strokeWidth={3} />
-            <span>NUEVO</span>
-          </button>
+          <Button 
+            size="sm" 
+            className="h-8 px-3 gap-1 font-medium shadow-sm"
+            onClick={handleOpenCreate}>
+            <Plus size={15} />
+            <span>Nuevo</span>
+          </Button>
         </div>
       </header>
 
-      {/* Métricas */}
-      <div className={`p-3 ${darkMode ? 'bg-neutral-900/50 border-neutral-800/80' : 'bg-stone-200/50 border-stone-300'} border-b grid grid-cols-2 gap-2`}>
-        <div className={`${bgCard} p-3 rounded-xl border`}>
-          <span className={`text-[11px] ${textMuted} uppercase font-bold block`}>
-            {tab === 'finalizados' ? 'Facturado Finalizados' : 'En Juego Activos'}
+      {/* Tarjetas de Métricas */}
+      <div className="p-3 border-b border-border grid grid-cols-2 gap-2.5 bg-muted/20">
+        <Card className="p-3">
+          <span className="text-[11px] font-medium text-muted-foreground block">
+            {tab === 'finalizados' ? 'Facturado' : 'En Producción'}
           </span>
-          <span className={`${priceScale} text-amber-500 block mt-0.5`}>
+          <span className="text-base font-semibold tracking-tight block mt-0.5">
             ${(tab === 'finalizados' ? metricas.finalizadosMetricas.bruto : metricas.activosMetricas.bruto).toLocaleString('es-AR')}
           </span>
-        </div>
-        <div className={`${bgCard} p-3 rounded-xl border`}>
-          <span className={`text-[11px] ${textMuted} uppercase font-bold block`}>
-            {tab === 'finalizados' ? 'Cobrado Total' : 'Por Cobrar Activos'}
+        </Card>
+
+        <Card className="p-3">
+          <span className="text-[11px] font-medium text-muted-foreground block">
+            {tab === 'finalizados' ? 'Cobrado' : 'Saldo Pendiente'}
           </span>
-          <span className={`${priceScale} text-emerald-500 block mt-0.5`}>
+          <span className="text-base font-semibold tracking-tight text-emerald-600 dark:text-emerald-400 block mt-0.5">
             ${(tab === 'finalizados' ? metricas.finalizadosMetricas.bruto : metricas.activosMetricas.resta).toLocaleString('es-AR')}
           </span>
-        </div>
+        </Card>
       </div>
 
-      {/* Tabs */}
+      {/* Navegación Tabs Segmentada */}
       <div className="p-3 pb-1">
-        <nav className={`grid grid-cols-3 ${darkMode ? 'bg-neutral-900/80 border-neutral-800' : 'bg-stone-200 border-stone-300'} p-1 rounded-xl border font-bold text-xs`}>
+        <div className="grid grid-cols-3 bg-muted p-1 rounded-lg text-xs font-medium">
           <button 
             onClick={() => setTab('activos')} 
-            className={`py-2.5 rounded-lg transition-all ${tab === 'activos' ? 'bg-amber-600 text-stone-950 shadow font-black' : textMuted}`}>
-            ACTIVOS ({metricas.activosCount})
+            className={`py-1.5 rounded-md transition-all ${tab === 'activos' ? 'bg-background text-foreground shadow-sm font-semibold' : 'text-muted-foreground hover:text-foreground'}`}>
+            Activos ({metricas.activosCount})
           </button>
           <button 
             onClick={() => setTab('finalizados')} 
-            className={`py-2.5 rounded-lg transition-all ${tab === 'finalizados' ? 'bg-amber-600 text-stone-950 shadow font-black' : textMuted}`}>
-            FINALIZADOS ({metricas.finalizadosCount})
+            className={`py-1.5 rounded-md transition-all ${tab === 'finalizados' ? 'bg-background text-foreground shadow-sm font-semibold' : 'text-muted-foreground hover:text-foreground'}`}>
+            Finalizados ({metricas.finalizadosCount})
           </button>
           <button 
             onClick={() => setTab('stock')} 
-            className={`py-2.5 rounded-lg transition-all ${tab === 'stock' ? 'bg-amber-600 text-stone-950 shadow font-black' : textMuted}`}>
-            STOCK BASES
+            className={`py-1.5 rounded-md transition-all ${tab === 'stock' ? 'bg-background text-foreground shadow-sm font-semibold' : 'text-muted-foreground hover:text-foreground'}`}>
+            Bases
           </button>
-        </nav>
+        </div>
       </div>
 
-      {/* Filtros */}
+      {/* Barra de Filtros */}
       {(tab === 'activos' || tab === 'finalizados') && (
         <div className="px-3 pb-2 flex items-center gap-2">
-          <div className={`flex-1 ${bgCard} border rounded-xl px-3 py-2 flex items-center gap-2`}>
-            <SlidersHorizontal size={16} className={textMuted} />
+          <div className="flex-1 flex items-center gap-2 border border-input rounded-lg px-2.5 py-1.5 bg-background shadow-sm text-xs">
+            <SlidersHorizontal size={13} className="text-muted-foreground" />
             <select 
               value={filtroMadera} 
               onChange={e => setFiltroMadera(e.target.value)}
-              className={`bg-transparent font-bold outline-none w-full ${darkMode ? 'text-neutral-200' : 'text-stone-800'}`}>
-              <option value="TODAS" className={darkMode ? 'bg-neutral-900' : 'bg-white'}>Todas las maderas</option>
+              className="bg-transparent outline-none w-full font-medium">
+              <option value="TODAS">Todas las maderas</option>
               {maderas.map(m => (
-                <option key={m} value={m} className={darkMode ? 'bg-neutral-900' : 'bg-white'}>{m}</option>
+                <option key={m} value={m}>{m}</option>
               ))}
             </select>
           </div>
 
-          <button 
+          <Button 
+            variant="outline" 
+            size="sm"
             onClick={() => setOrdenFecha(ordenFecha === 'entrega' ? 'desc' : ordenFecha === 'desc' ? 'asc' : 'entrega')}
-            className={`${bgCard} border px-3 py-2 rounded-xl font-bold flex items-center gap-1.5`}>
-            <ArrowUpDown size={15} className="text-amber-500" />
-            <span>
-              {ordenFecha === 'entrega' ? 'Por Entrega' : ordenFecha === 'desc' ? 'Más recientes' : 'Más antiguos'}
-            </span>
-          </button>
+            className="h-8 gap-1 text-xs">
+            <ArrowUpDown size={12} className="text-muted-foreground" />
+            <span>{ordenFecha === 'entrega' ? 'Por Entrega' : ordenFecha === 'desc' ? 'Recientes' : 'Antiguos'}</span>
+          </Button>
         </div>
       )}
 
       {/* Lista de Pedidos */}
-      <main className="p-3 flex-1 space-y-3 overflow-y-auto">
+      <main className="p-3 flex-1 space-y-2.5 overflow-y-auto">
         {tab === 'activos' || tab === 'finalizados' ? (
           pedidosFiltrados.length === 0 ? (
-            <div className={`text-center py-16 ${textMuted}`}>
-              {loading ? 'Cargando pedidos...' : 'No se encontraron pedidos.'}
+            <div className="text-center py-20 text-muted-foreground text-xs">
+              {loading ? 'Sincronizando registros...' : 'No hay registros cargados.'}
             </div>
           ) : (
             pedidosFiltrados.map((pedido) => {
@@ -623,404 +610,383 @@ export default function App() {
               const diasRestantes = calcularDiasRestantes(pedido.fechaEntregaPactada);
 
               return (
-                <div 
-                  key={pedido.id} 
-                  className={`${bgCard} border rounded-2xl p-3.5 shadow-md relative overflow-hidden flex gap-3.5 items-center`}>
-                  
+                <Card key={pedido.id} className="p-3.5 flex gap-3.5 items-center hover:border-foreground/20 transition-all">
                   <img 
                     src={pedido.foto || IMAGEN_DEFAULT} 
                     alt={pedido.producto} 
-                    className={`${fontSize === '4x' ? 'w-24 h-24' : 'w-20 h-20'} rounded-xl object-cover border border-neutral-700/50 flex-shrink-0 bg-neutral-950`} 
+                    className="w-16 h-16 rounded-lg object-cover border border-border flex-shrink-0 bg-muted" 
                   />
 
-                  <div className="flex-1 min-w-0 space-y-0.5">
+                  <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`font-black uppercase tracking-wide text-amber-500 truncate ${fontSize === '4x' ? 'text-lg' : 'text-sm'}`}>
+                      <span className="font-semibold text-xs tracking-tight truncate">
                         {pedido.cliente}
                       </span>
                       {!pedido.entregado && getBadgeDias(diasRestantes)}
                       {pedido.maderaLista && (
-                        <span className="bg-emerald-500/10 text-emerald-500 font-bold px-1.5 py-0.5 rounded border border-emerald-500/20 text-[10px]">
-                          Madera Lista
-                        </span>
+                        <Badge variant="success">Madera lista</Badge>
                       )}
                     </div>
 
-                    <h3 className={`${titleScale} text-neutral-100 dark:text-neutral-100 text-stone-900 truncate`}>{pedido.producto}</h3>
-                    <p className={`${textMuted} font-medium truncate`}>{pedido.medidas}</p>
-                    <p className="text-amber-500 font-medium truncate">{pedido.madera} • {getBaseNombre(pedido.baseId)}</p>
+                    <h4 className="font-medium text-xs text-foreground/90 truncate">{pedido.producto}</h4>
+                    <p className="text-[11px] text-muted-foreground truncate">{pedido.medidas} • {pedido.madera}</p>
 
                     {pedido.localidadEnvio && (
-                      <p className={`${textMuted} flex items-center gap-1 truncate text-xs`}>
-                        <MapPin size={13} className="text-amber-500 flex-shrink-0" /> {pedido.localidadEnvio}
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                        <MapPin size={11} /> {pedido.localidadEnvio}
                       </p>
                     )}
-                    
-                    <div className="mt-2 flex items-center justify-between border-t border-neutral-800/60 dark:border-neutral-800/60 border-stone-200 pt-1.5">
-                      <span className={`${priceScale} text-emerald-500`}>
+
+                    <div className="pt-1 flex items-center justify-between border-t border-border text-xs">
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                         ${restan.toLocaleString('es-AR')}
                       </span>
-                      <span className={`${textMuted} font-semibold text-xs`}>
+                      <span className="text-[11px] text-muted-foreground font-mono">
                         Tot: ${totalVenta.toLocaleString('es-AR')}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-center justify-between gap-4 self-stretch py-1">
-                    <div className="flex flex-col gap-2 items-center">
-                      <button 
-                        onClick={() => setSelectedPedido(pedido)} 
-                        className={`${textMuted} hover:text-amber-500 p-1`}>
-                        <MoreHorizontal size={22} />
-                      </button>
-                      <button 
-                        onClick={() => enviarWhatsAppDetalle(pedido)}
-                        className="text-emerald-500 hover:text-emerald-400 p-1 active:scale-90 transition">
-                        <MessageCircle size={22} />
-                      </button>
+                  <div className="flex flex-col items-center justify-between gap-3 self-stretch py-0.5">
+                    <div className="flex flex-col gap-1 items-center">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        onClick={() => setSelectedPedido(pedido)}>
+                        <MoreHorizontal size={16} />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-7 w-7 text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10"
+                        onClick={() => enviarWhatsAppDetalle(pedido)}>
+                        <MessageCircle size={16} />
+                      </Button>
                     </div>
 
                     <button 
-                      onClick={() => handleConfirmToggle(pedido)} 
-                      title={pedido.entregado ? "Marcar como pendiente" : "Marcar como entregado"}
-                      className="transition-transform active:scale-90">
+                      onClick={() => setConfirmModal({ show: true, pedido })} 
+                      className="text-muted-foreground hover:text-foreground transition-transform active:scale-95">
                       {pedido.entregado ? (
-                        <CheckCircle2 size={28} className="fill-emerald-500 text-neutral-950" />
+                        <CheckCircle2 size={24} className="text-foreground" />
                       ) : (
-                        <Circle size={28} className={darkMode ? 'text-neutral-700' : 'text-stone-400'} />
+                        <Circle size={24} className="text-muted-foreground/50 hover:text-foreground" />
                       )}
                     </button>
                   </div>
-                </div>
+                </Card>
               );
             })
           )
         ) : tab === 'stock' ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {stockPatas.map(pata => (
-              <div key={pata.id} className={`${bgCard} border p-4 rounded-2xl flex justify-between items-center shadow`}>
+              <Card key={pata.id} className="p-3 flex justify-between items-center">
                 <div className="flex-1 pr-2">
-                  <h4 className={`${titleScale} tracking-wide`}>{pata.nombre}</h4>
-                  <span className={`text-xs font-bold ${pata.cantidad <= 1 ? 'text-rose-500' : 'text-amber-500/80'}`}>
-                    {pata.cantidad <= 1 ? '¡Poco Stock!' : 'Estructura de hierro'}
+                  <h4 className="font-medium text-xs tracking-tight">{pata.nombre}</h4>
+                  <span className={`text-[11px] ${pata.cantidad <= 1 ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                    {pata.cantidad <= 1 ? 'Stock crítico' : 'Estructura metálica'}
                   </span>
                 </div>
                 
-                <div className={`flex items-center gap-3.5 ${darkMode ? 'bg-neutral-950' : 'bg-stone-100'} px-3 py-2 rounded-xl border ${darkMode ? 'border-neutral-800' : 'border-stone-300'}`}>
-                  <button 
-                    onClick={() => handleStockChange(pata.id, -1)}
-                    className={`w-9 h-9 rounded-lg ${darkMode ? 'bg-neutral-800 text-neutral-200' : 'bg-stone-200 text-stone-800'} font-black flex items-center justify-center active:scale-95 text-lg`}>
+                <div className="flex items-center gap-2 bg-muted/60 p-1 rounded-lg border border-border">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-7 w-7 p-0"
+                    onClick={() => handleStockChange(pata.id, -1)}>
                     -
-                  </button>
-                  <span className={`font-black text-amber-500 ${priceScale} w-7 text-center`}>
+                  </Button>
+                  <span className="font-semibold text-xs w-6 text-center">
                     {pata.cantidad}
                   </span>
-                  <button 
-                    onClick={() => handleStockChange(pata.id, 1)}
-                    className={`w-9 h-9 rounded-lg ${darkMode ? 'bg-neutral-800 text-neutral-200' : 'bg-stone-200 text-stone-800'} font-black flex items-center justify-center active:scale-95 text-lg`}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-7 w-7 p-0"
+                    onClick={() => handleStockChange(pata.id, 1)}>
                     +
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         ) : (
           <div className="space-y-4">
-            <div className={`${bgCard} border p-4 rounded-2xl space-y-3`}>
-              <h3 className="font-black text-amber-500 uppercase tracking-wider">Maderas Disponibles</h3>
+            <Card className="p-4 space-y-3">
+              <h3 className="font-semibold text-xs tracking-tight uppercase text-muted-foreground">Maderas Disponibles</h3>
               <form onSubmit={handleAddMadera} className="flex gap-2">
-                <input 
+                <Input 
                   type="text" 
                   placeholder="Ej: Incienso 40mm"
                   value={nuevaMadera}
                   onChange={e => setNuevaMadera(e.target.value)}
-                  className={`flex-1 border rounded-xl px-3.5 py-2.5 ${bgInput} outline-none`} 
+                  className="h-9 text-xs" 
                 />
-                <button type="submit" className="bg-amber-600 text-stone-950 px-4 py-2.5 rounded-xl font-bold">
-                  Agregar
-                </button>
+                <Button type="submit" size="sm" className="h-9">Agregar</Button>
               </form>
 
-              <div className="space-y-2 pt-1">
+              <div className="space-y-1.5 pt-1">
                 {maderas.map(m => (
-                  <div key={m} className={`flex justify-between items-center ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-stone-100 border-stone-200'} px-3.5 py-2.5 rounded-xl border`}>
-                    <span className="font-semibold">{m}</span>
-                    <button onClick={() => handleDeleteMadera(m)} className="text-neutral-400 hover:text-rose-500">
-                      <Trash2 size={18} />
+                  <div key={m} className="flex justify-between items-center bg-muted/40 px-3 py-2 rounded-lg border border-border text-xs">
+                    <span className="font-medium">{m}</span>
+                    <button onClick={() => handleDeleteMadera(m)} className="text-muted-foreground hover:text-destructive">
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
 
-            <div className={`${bgCard} border p-4 rounded-2xl space-y-3`}>
-              <h3 className="font-black text-amber-500 uppercase tracking-wider">Tipos de Bases de Hierro</h3>
+            <Card className="p-4 space-y-3">
+              <h3 className="font-semibold text-xs tracking-tight uppercase text-muted-foreground">Estructuras de Base</h3>
               <form onSubmit={handleAddPata} className="flex gap-2">
-                <input 
+                <Input 
                   type="text" 
                   placeholder="Ej: BASE TRAPECIO 80X70"
                   value={nuevaPataNombre}
                   onChange={e => setNuevaPataNombre(e.target.value)}
-                  className={`flex-1 border rounded-xl px-3.5 py-2.5 ${bgInput} outline-none`} 
+                  className="h-9 text-xs" 
                 />
-                <button type="submit" className="bg-amber-600 text-stone-950 px-4 py-2.5 rounded-xl font-bold">
-                  Agregar
-                </button>
+                <Button type="submit" size="sm" className="h-9">Agregar</Button>
               </form>
 
-              <div className="space-y-2 pt-1">
+              <div className="space-y-1.5 pt-1">
                 {stockPatas.map(p => (
-                  <div key={p.id} className={`flex justify-between items-center ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-stone-100 border-stone-200'} px-3.5 py-2.5 rounded-xl border`}>
-                    <span className="font-semibold">{p.nombre}</span>
-                    <button onClick={() => handleDeletePata(p.id)} className="text-neutral-400 hover:text-rose-500">
-                      <Trash2 size={18} />
+                  <div key={p.id} className="flex justify-between items-center bg-muted/40 px-3 py-2 rounded-lg border border-border text-xs">
+                    <span className="font-medium">{p.nombre}</span>
+                    <button onClick={() => handleDeletePata(p.id)} className="text-muted-foreground hover:text-destructive">
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           </div>
         )}
       </main>
 
-      {/* Modal Confirmación de Entrega */}
+      {/* Modal Confirmación shadcn */}
       {confirmModal.show && confirmModal.pedido && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`${darkMode ? 'bg-neutral-900 border-neutral-800 text-neutral-100' : 'bg-white border-stone-200 text-stone-900'} border w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl`}>
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-sm p-5 space-y-4 shadow-xl">
             <div className="flex items-center gap-3">
-              <div className={`p-2.5 rounded-2xl ${confirmModal.pedido.entregado ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
-                <CheckCircle2 size={24} />
+              <div className="p-2 rounded-lg bg-muted text-foreground">
+                <PackageCheck size={20} />
               </div>
               <div>
-                <h3 className="font-black text-base">
-                  {confirmModal.pedido.entregado ? '¿Reactivar pedido?' : '¿Finalizar pedido?'}
+                <h3 className="font-semibold text-sm">
+                  {confirmModal.pedido.entregado ? '¿Mover a Activos?' : '¿Finalizar Pedido?'}
                 </h3>
-                <p className={`${textMuted} text-xs mt-0.5`}>
+                <p className="text-xs text-muted-foreground">
                   {confirmModal.pedido.entregado
-                    ? 'El pedido volverá a la pestaña de Activos.'
-                    : 'Se marcará como entregado y pasará a Finalizados.'}
+                    ? 'El pedido pasará nuevamente a lista de producción.'
+                    : 'Se marcará como entregado en el inventario.'}
                 </p>
               </div>
             </div>
 
-            <div className={`${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-stone-100 border-stone-200'} p-3 rounded-xl border text-xs space-y-1`}>
-              <p><span className="font-bold">Cliente:</span> {confirmModal.pedido.cliente}</p>
-              <p><span className="font-bold">Producto:</span> {confirmModal.pedido.producto}</p>
+            <div className="bg-muted/50 p-3 rounded-lg border border-border text-xs space-y-1">
+              <p><span className="text-muted-foreground">Cliente:</span> {confirmModal.pedido.cliente}</p>
+              <p><span className="text-muted-foreground">Modelo:</span> {confirmModal.pedido.producto}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-1">
-              <button 
-                type="button" 
-                onClick={() => setConfirmModal({ show: false, pedido: null })}
-                className={`py-3 rounded-xl font-bold text-xs border ${darkMode ? 'border-neutral-800 hover:bg-neutral-800 text-neutral-300' : 'border-stone-300 hover:bg-stone-100 text-stone-700'}`}>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setConfirmModal({ show: false, pedido: null })}>
                 Cancelar
-              </button>
-              <button 
-                type="button" 
-                onClick={executeToggleEntregado}
-                className={`py-3 rounded-xl font-black text-xs text-stone-950 shadow transition ${
-                  confirmModal.pedido.entregado ? 'bg-amber-500 hover:bg-amber-400' : 'bg-emerald-500 hover:bg-emerald-400'
-                }`}>
+              </Button>
+              <Button 
+                size="sm"
+                onClick={executeToggleEntregado}>
                 Confirmar
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Modal Detalle */}
       {selectedPedido && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className={`${darkMode ? 'bg-neutral-900 border-neutral-800 text-neutral-100' : 'bg-white border-stone-200 text-stone-900'} border-t sm:border w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto`}>
-            <div className="flex justify-between items-center border-b border-neutral-700/50 pb-3">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <Card className="w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center border-b border-border pb-3">
               <div>
-                <span className="font-bold text-amber-500 uppercase text-xs">{selectedPedido.cliente}</span>
-                <h3 className={`${titleScale} text-xl`}>{selectedPedido.producto}</h3>
+                <Badge variant="outline" className="mb-1">{selectedPedido.cliente}</Badge>
+                <h3 className="font-semibold text-base">{selectedPedido.producto}</h3>
               </div>
-              <button onClick={() => setSelectedPedido(null)} className={`p-1.5 rounded-full ${darkMode ? 'bg-neutral-800 text-neutral-300' : 'bg-stone-200 text-stone-700'}`}><X size={20} /></button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedPedido(null)}>
+                <X size={16} />
+              </Button>
             </div>
 
-            <div className={`${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-stone-100 border-stone-200'} p-4 rounded-2xl border space-y-2.5 text-sm`}>
-              <div className="flex justify-between">
-                <span className={textMuted}>Fecha de venta:</span>
-                <span className="font-semibold">{selectedPedido.fechaVenta}</span>
-              </div>
+            <div className="bg-muted/40 p-3.5 rounded-xl border border-border space-y-2 text-xs">
+              <div className="flex justify-between"><span className="text-muted-foreground">Fecha Venta:</span><span className="font-medium">{selectedPedido.fechaVenta}</span></div>
               {selectedPedido.fechaEntregaPactada && (
-                <div className="flex justify-between">
-                  <span className="text-amber-500 font-bold">Límite entrega:</span>
-                  <span className="font-bold text-amber-500">{selectedPedido.fechaEntregaPactada}</span>
-                </div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Entrega Pactada:</span><span className="font-semibold">{selectedPedido.fechaEntregaPactada}</span></div>
               )}
-              <div className="flex justify-between">
-                <span className={textMuted}>Medidas:</span>
-                <span className="font-semibold">{selectedPedido.medidas}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className={textMuted}>Madera:</span>
-                <span className="font-semibold text-amber-500">{selectedPedido.madera}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className={textMuted}>Base:</span>
-                <span className="font-semibold">{getBaseNombre(selectedPedido.baseId)}</span>
-              </div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Dimensiones:</span><span className="font-medium">{selectedPedido.medidas}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Madera:</span><span className="font-medium">{selectedPedido.madera}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Estructura Base:</span><span className="font-medium">{getBaseNombre(selectedPedido.baseId)}</span></div>
               {selectedPedido.localidadEnvio && (
-                <div className="flex justify-between">
-                  <span className={textMuted}>Entrega:</span>
-                  <span className="font-semibold">{selectedPedido.localidadEnvio} {selectedPedido.domicilioEnvio ? `(${selectedPedido.domicilioEnvio})` : ''}</span>
-                </div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Destino:</span><span className="font-medium">{selectedPedido.localidadEnvio}</span></div>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className={`${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-stone-100 border-stone-200'} p-3.5 rounded-xl border`}>
-                <span className={`${textMuted} block text-xs uppercase font-bold`}>Precio Total</span>
-                <span className={`${priceScale} block mt-0.5`}>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="border border-border p-3 rounded-lg bg-card">
+                <span className="text-[10px] text-muted-foreground uppercase font-medium block">Total General</span>
+                <span className="font-semibold text-sm block mt-0.5">
                   ${(Number(selectedPedido.precioLista || 0) + Number(selectedPedido.cobroAdicional || 0) + Number(selectedPedido.envioCobrado || 0)).toLocaleString('es-AR')}
                 </span>
               </div>
-              <div className="bg-emerald-950/30 border border-emerald-800/50 p-3.5 rounded-xl">
-                <span className="text-emerald-500 block text-xs uppercase font-bold">Resta Cobrar</span>
-                <span className={`${priceScale} text-emerald-400 block mt-0.5`}>
+              <div className="border border-emerald-500/20 bg-emerald-500/5 p-3 rounded-lg">
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-medium block">Saldo Restante</span>
+                <span className="font-semibold text-sm text-emerald-600 dark:text-emerald-400 block mt-0.5">
                   ${(Number(selectedPedido.precioLista || 0) + Number(selectedPedido.cobroAdicional || 0) + Number(selectedPedido.envioCobrado || 0) - Number(selectedPedido.senia || 0)).toLocaleString('es-AR')}
                 </span>
               </div>
             </div>
 
-            <div className="space-y-2 pt-1">
+            <div className="space-y-2 pt-2">
               <div className="grid grid-cols-2 gap-2">
-                <button 
+                <Button 
+                  variant="outline" 
+                  size="sm"
                   onClick={() => enviarWhatsAppDetalle(selectedPedido)}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-stone-950 font-black py-3 rounded-xl flex items-center justify-center gap-1.5 transition text-xs">
-                  <MessageCircle size={18} /> WhatsApp
-                </button>
-                <button 
+                  className="gap-1.5 h-9">
+                  <MessageCircle size={15} /> WhatsApp
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
                   onClick={() => generarPDF(selectedPedido)}
-                  className={`font-bold py-3 rounded-xl flex items-center justify-center gap-1.5 transition border text-xs ${
-                    darkMode ? 'bg-neutral-800 text-neutral-100 border-neutral-700' : 'bg-stone-200 text-stone-900 border-stone-300'
-                  }`}>
-                  <Download size={18} /> Descargar PDF
-                </button>
+                  className="gap-1.5 h-9">
+                  <Download size={15} /> Generar PDF
+                </Button>
               </div>
 
               <div className="flex gap-2">
-                <button 
+                <Button 
+                  size="sm"
                   onClick={() => handleOpenEdit(selectedPedido)}
-                  className="flex-1 bg-amber-600 hover:bg-amber-500 text-stone-950 font-black py-3.5 rounded-xl flex items-center justify-center gap-2 transition text-xs">
-                  <Edit3 size={18} /> MODIFICAR
-                </button>
-                <button 
+                  className="flex-1 gap-1.5 h-9">
+                  <Edit3 size={15} /> Modificar
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
                   onClick={() => handleDeletePedido(selectedPedido.id)}
-                  className="bg-rose-950/50 hover:bg-rose-900 border border-rose-800 text-rose-300 px-4 py-3.5 rounded-xl font-bold flex items-center justify-center transition">
-                  <Trash2 size={18} />
-                </button>
+                  className="h-9 px-3">
+                  <Trash2 size={15} />
+                </Button>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
-      {/* Modal Crear / Editar */}
+      {/* Modal Formulario */}
       {showModalForm && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <form onSubmit={handleSavePedido} className={`${darkMode ? 'bg-neutral-900 border-neutral-800 text-neutral-100' : 'bg-white border-stone-200 text-stone-900'} border-t sm:border w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 max-h-[92vh] overflow-y-auto`}>
-            <div className="flex justify-between items-center border-b border-neutral-700/50 pb-3">
-              <h3 className="font-black text-amber-500 uppercase text-sm">
-                {editingId ? 'Modificar Pedido' : 'Crear Nuevo Pedido'}
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <Card className="w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3.5 max-h-[92vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center border-b border-border pb-3">
+              <h3 className="font-semibold text-sm">
+                {editingId ? 'Editar Registro' : 'Nuevo Registro'}
               </h3>
-              <button type="button" onClick={() => setShowModalForm(false)} className="p-1"><X size={20} /></button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowModalForm(false)}>
+                <X size={15} />
+              </Button>
             </div>
 
-            <div className="space-y-3">
+            <form onSubmit={handleSavePedido} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className={`font-bold ${textMuted} block mb-1 text-xs`}>Fecha Venta</label>
-                  <input 
+                  <label className="text-muted-foreground block mb-1">Fecha Venta</label>
+                  <Input 
                     type="date" 
                     required
                     value={formData.fechaVenta} 
-                    onChange={e => setFormData({ ...formData, fechaVenta: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} outline-none text-sm`} 
+                    onChange={e => setFormData({ ...formData, fechaVenta: e.target.value })} 
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-amber-500 block mb-1 text-xs">Pactado Entrega</label>
-                  <input 
+                  <label className="text-muted-foreground block mb-1">Pactado Entrega</label>
+                  <Input 
                     type="date" 
                     value={formData.fechaEntregaPactada} 
-                    onChange={e => setFormData({ ...formData, fechaEntregaPactada: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} text-amber-500 font-bold outline-none text-sm`} 
+                    onChange={e => setFormData({ ...formData, fechaEntregaPactada: e.target.value })} 
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className={`font-bold ${textMuted} block mb-1 text-xs`}>Cliente</label>
-                  <input 
+                  <label className="text-muted-foreground block mb-1">Cliente</label>
+                  <Input 
                     type="text" 
                     required
                     placeholder="Nombre"
                     value={formData.cliente} 
-                    onChange={e => setFormData({ ...formData, cliente: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} outline-none text-sm`} 
+                    onChange={e => setFormData({ ...formData, cliente: e.target.value })} 
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-emerald-500 block mb-1 text-xs">Teléfono</label>
-                  <input 
+                  <label className="text-muted-foreground block mb-1">Teléfono</label>
+                  <Input 
                     type="text" 
                     placeholder="WhatsApp"
                     value={formData.telefono} 
-                    onChange={e => setFormData({ ...formData, telefono: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} outline-none text-sm`} 
+                    onChange={e => setFormData({ ...formData, telefono: e.target.value })} 
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className={`font-bold ${textMuted} block mb-1 text-xs`}>Producto</label>
-                  <input 
+                  <label className="text-muted-foreground block mb-1">Producto</label>
+                  <Input 
                     type="text" 
                     required
-                    placeholder="Ej: Mesa Comedor"
+                    placeholder="Mesa, Banco, etc."
                     value={formData.producto} 
-                    onChange={e => setFormData({ ...formData, producto: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} outline-none text-sm`} 
+                    onChange={e => setFormData({ ...formData, producto: e.target.value })} 
                   />
                 </div>
                 <div>
-                  <label className={`font-bold ${textMuted} block mb-1 text-xs`}>Medidas</label>
-                  <input 
+                  <label className="text-muted-foreground block mb-1">Dimensiones</label>
+                  <Input 
                     type="text" 
                     placeholder="Ej: 2.00 x 1.00 m"
                     value={formData.medidas} 
-                    onChange={e => setFormData({ ...formData, medidas: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} outline-none text-sm`} 
+                    onChange={e => setFormData({ ...formData, medidas: e.target.value })} 
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="font-bold text-amber-500 block mb-1 text-xs">Madera</label>
+                  <label className="text-muted-foreground block mb-1">Madera</label>
                   <select 
                     value={formData.madera} 
                     onChange={e => setFormData({ ...formData, madera: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} text-amber-500 font-bold outline-none text-sm`}>
+                    className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-xs shadow-sm font-medium">
                     {maderas.map((m) => (
-                      <option key={m} value={m} className={darkMode ? 'bg-neutral-900' : 'bg-white'}>{m}</option>
+                      <option key={m} value={m}>{m}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="font-bold text-amber-500 block mb-1 text-xs">Base</label>
+                  <label className="text-muted-foreground block mb-1">Estructura Base</label>
                   <select 
                     value={formData.baseId} 
                     onChange={e => setFormData({ ...formData, baseId: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} outline-none text-sm`}>
+                    className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-xs shadow-sm font-medium">
                     {stockPatas.map(b => (
-                      <option key={b.id} value={b.id} className={darkMode ? 'bg-neutral-900' : 'bg-white'}>
+                      <option key={b.id} value={b.id}>
                         {b.nombre} ({b.cantidad} disp.)
                       </option>
                     ))}
@@ -1028,107 +994,101 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 border-t border-neutral-700/50 pt-2">
+              <div className="grid grid-cols-2 gap-2 border-t border-border pt-2">
                 <div>
-                  <label className={`font-bold ${textMuted} block mb-1 text-xs`}>Localidad</label>
-                  <input 
+                  <label className="text-muted-foreground block mb-1">Localidad</label>
+                  <Input 
                     type="text" 
                     placeholder="Ej: Avellaneda"
                     value={formData.localidadEnvio} 
-                    onChange={e => setFormData({ ...formData, localidadEnvio: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} outline-none text-sm`} 
+                    onChange={e => setFormData({ ...formData, localidadEnvio: e.target.value })} 
                   />
                 </div>
                 <div>
-                  <label className={`font-bold ${textMuted} block mb-1 text-xs`}>Domicilio</label>
-                  <input 
+                  <label className="text-muted-foreground block mb-1">Dirección</label>
+                  <Input 
                     type="text" 
                     placeholder="Calle, Altura"
                     value={formData.domicilioEnvio} 
-                    onChange={e => setFormData({ ...formData, domicilioEnvio: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} outline-none text-sm`} 
+                    onChange={e => setFormData({ ...formData, domicilioEnvio: e.target.value })} 
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className={`font-bold ${textMuted} block mb-1 text-xs`}>Precio Lista ($)</label>
-                  <input 
+                  <label className="text-muted-foreground block mb-1">Precio Base ($)</label>
+                  <Input 
                     type="number" 
                     placeholder="0"
                     value={formData.precioLista} 
-                    onChange={e => setFormData({ ...formData, precioLista: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} outline-none text-sm`} 
+                    onChange={e => setFormData({ ...formData, precioLista: e.target.value })} 
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-amber-500 block mb-1 text-xs">Seña ($)</label>
-                  <input 
+                  <label className="text-muted-foreground block mb-1">Seña Pagada ($)</label>
+                  <Input 
                     type="number" 
                     placeholder="0"
                     value={formData.senia} 
-                    onChange={e => setFormData({ ...formData, senia: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} text-amber-500 font-bold outline-none text-sm`} 
+                    onChange={e => setFormData({ ...formData, senia: e.target.value })} 
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className={`font-bold ${textMuted} block mb-1 text-xs`}>Adicional ($)</label>
-                  <input 
+                  <label className="text-muted-foreground block mb-1">Adicionales ($)</label>
+                  <Input 
                     type="number" 
                     placeholder="0"
                     value={formData.cobroAdicional} 
-                    onChange={e => setFormData({ ...formData, cobroAdicional: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} outline-none text-sm`} 
+                    onChange={e => setFormData({ ...formData, cobroAdicional: e.target.value })} 
                   />
                 </div>
                 <div>
-                  <label className={`font-bold ${textMuted} block mb-1 text-xs`}>Envío ($)</label>
-                  <input 
+                  <label className="text-muted-foreground block mb-1">Costo Envío ($)</label>
+                  <Input 
                     type="number" 
                     placeholder="0"
                     value={formData.envioCobrado} 
-                    onChange={e => setFormData({ ...formData, envioCobrado: e.target.value })}
-                    className={`w-full border rounded-xl p-3 ${bgInput} outline-none text-sm`} 
+                    onChange={e => setFormData({ ...formData, envioCobrado: e.target.value })} 
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 pt-1 items-center">
-                <label className={`flex items-center gap-2 ${bgInput} border p-2.5 rounded-xl cursor-pointer`}>
+                <label className="flex items-center gap-2 border border-input rounded-lg p-2.5 bg-background cursor-pointer text-xs">
                   <input 
                     type="checkbox" 
                     checked={formData.maderaLista} 
                     onChange={e => setFormData({ ...formData, maderaLista: e.target.checked })}
-                    className="w-5 h-5 accent-amber-600 rounded" 
+                    className="rounded border-input text-primary" 
                   />
-                  <span className="font-bold text-xs">Madera lista</span>
+                  <span>Madera lista</span>
                 </label>
 
-                <label className={`flex items-center justify-center ${bgInput} border py-2.5 rounded-xl font-semibold cursor-pointer text-xs`}>
-                  Subir foto
+                <label className="flex items-center justify-center border border-input rounded-lg py-2.5 bg-background text-xs cursor-pointer hover:bg-muted/40">
+                  Subir fotografía
                   <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                 </label>
               </div>
-            </div>
 
-            <button 
-              type="submit" 
-              disabled={isSubmitting}
-              className="w-full bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800/60 disabled:cursor-not-allowed text-stone-950 font-black py-3.5 rounded-xl uppercase tracking-wider shadow transition mt-2 text-sm flex items-center justify-center gap-2">
-              {isSubmitting ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  <span>Guardando...</span>
-                </>
-              ) : (
-                <span>{editingId ? 'Guardar Cambios' : 'Crear Pedido'}</span>
-              )}
-            </button>
-          </form>
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="w-full gap-2 h-10 mt-2">
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Guardando cambios...</span>
+                  </>
+                ) : (
+                  <span>{editingId ? 'Guardar Cambios' : 'Registrar Pedido'}</span>
+                )}
+              </Button>
+            </form>
+          </Card>
         </div>
       )}
 
