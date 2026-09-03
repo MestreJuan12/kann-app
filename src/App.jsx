@@ -483,11 +483,11 @@ export default function App() {
       <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card p-4 justify-between select-none">
         <div className="space-y-6">
           <div className="flex items-center gap-2.5 px-2">
-            <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground font-bold flex items-center justify-center text-sm shadow-sm">
+             <img src="/logo.png" alt="Logo KANN" className="w-8 h-8 rounded-lg object-contain bg-background border border-border p-0.5 shadow-sm" onError={(e) => { e.target.style.display="none" }} /> <div className="hidden">
               ✦
             </div>
             <div>
-              <span className="font-semibold text-sm tracking-tight block">Taller OS</span>
+              <span className="font-semibold text-sm tracking-tight block">TALLER KANN</span>
               <span className="text-[11px] text-muted-foreground block font-mono">Control de Producción</span>
             </div>
           </div>
