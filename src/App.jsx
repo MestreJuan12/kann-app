@@ -367,7 +367,7 @@ export default function App() {
     return base ? base.nombre : 'Sin base';
   };
 
-  const generarPDF = (pedido) => {
+  const generarPDF = async (pedido) => {
     try {
       const doc = new jsPDF();
       const total = Number(pedido.precioLista || 0) + Number(pedido.cobroAdicional || 0) + Number(pedido.envioCobrado || 0);
@@ -376,11 +376,25 @@ export default function App() {
 
       doc.setFillColor(24, 24, 27);
       doc.rect(0, 0, 210, 35, 'F');
-      
+
+      try {
+        const logoResponse = await fetch('/logo.png');
+        const logoBlob = await logoResponse.blob();
+        const logoDataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(logoBlob);
+        });
+        doc.addImage(logoDataUrl, 'PNG', 15, 7, 20, 20);
+      } catch (logoError) {
+        console.warn('No se pudo cargar el logo en el PDF:', logoError);
+      }
+
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text('ORDEN DE TRABAJO', 15, 22);
+      doc.text('ORDEN DE TRABAJO', 42, 22);
       
       doc.setFontSize(9);
       doc.setTextColor(161, 161, 170);
